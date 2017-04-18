@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">ForgeLiveScan</string>
+    <string name="exception_tango_error">"Tango exception! Try again!"</string>
+    <string name="exception_tango_invalid">"Tango invalid exception! Try again!"</string>
+    <string name="exception_out_of_date">"Tango service outdated!"</string>
+    <string name="exception_tango_permission">"Tango.PERMISSIONTYPE_DATASET required!"</string>
+
+    <string name="pref_cat_connection">Server connection</string>
+    <string name="pref_server_url">Server URL</string>
+    <string name="pref_server_url_def">http://www.bim.tu-darmstadt.de/home</string>
+    <string name="pref_server_send_delay">Send delay</string>
+
+
+    <string name="pref_cat_meshview">Mesh View Properties</string>
+    <string name="pref_meshview">Select View</string>
+    <string name="pref_meshview_firstperson">First Person</string>
+    <string name="pref_meshview_thirdperson">Third Person</string>
+    <string name="pref_meshview_topdown">Top Down</string>
+    <string name="scan_offline">Offline</string>
+    <string name="scan_area">Area [m²]:</string>
+
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="@string/pref_cat_connection"
+        android:key="pref_cat_connection">
+        <EditTextPreference
+            android:key="pref_server_url"
+            android:title="@string/pref_server_url"
+            android:defaultValue="@string/pref_server_url_def"
+        />
+        <aec.hackathon.munich.forgelivescan.util.IntEditTextPreference
+            android:key="pref_server_send_delay"
+            android:title="@string/pref_server_send_delay"
+            android:defaultValue="@integer/pref_server_send_delay_def"
+            android:inputType="number"
+            android:numeric="integer"
+            android:maxLength="2"
+            />
+    </PreferenceCategory>
+
+</PreferenceScreen>
