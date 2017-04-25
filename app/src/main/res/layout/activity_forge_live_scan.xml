@@ -101,14 +101,53 @@
                     android:visibility="visible" />
 
                 <TextView
+                    android:id="@+id/scan_height_textview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/scan_ceiling_height"
+                    android:layout_above="@+id/scan_floordistance_textview"
+                    android:layout_toStartOf="@+id/scan_height_value_textview"
+                    android:padding="4dp"
+                    />
+
+                <TextView
+                    android:id="@+id/scan_height_value_textview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/na"
+                    android:layout_above="@+id/scan_floordistance_textview"
+                    android:layout_alignParentEnd="true"
+                    android:padding="4dp"
+                    />
+
+                <TextView
+                    android:id="@+id/scan_floordistance_textview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/scan_floordistance"
+                    android:layout_above="@+id/scan_area_textview"
+                    android:layout_toStartOf="@+id/scan_floordistance_value_textview"
+                    android:padding="4dp"
+                    />
+
+                <TextView
+                    android:id="@+id/scan_floordistance_value_textview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/na"
+                    android:layout_above="@+id/scan_area_textview"
+                    android:layout_alignParentEnd="true"
+                    android:padding="4dp"
+                    />
+
+                <TextView
                     android:id="@+id/scan_area_value_textview"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentBottom="true"
                     android:layout_alignParentEnd="true"
-                    android:textSize="6pt"
-                    android:layout_marginEnd="4dp"
-                    android:text="n/a"/>
+                    android:padding="4dp"
+                    android:text="@string/na"/>
 
                 <TextView
                     android:id="@+id/scan_area_textview"
@@ -116,9 +155,26 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentBottom="true"
                     android:layout_toStartOf="@+id/scan_area_value_textview"
-                    android:textSize="6pt"
-                    android:layout_marginEnd="4dp"
+                    android:padding="4dp"
                     android:text="@string/scan_area"/>
+
+                <TextView
+                    android:id="@+id/response_code_value_textView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/na"
+                    android:layout_alignParentStart="true"
+                    android:layout_alignParentBottom="true"
+                    android:padding="4dp"/>
+
+                <TextView
+                    android:id="@+id/response_code_textView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:text="@string/response_code"
+                    android:layout_above="@+id/response_code_value_textView"
+                    android:padding="4dp"/>
 
             </RelativeLayout>
 

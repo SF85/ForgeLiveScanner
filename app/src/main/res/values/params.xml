@@ -4,4 +4,5 @@
     <item name="min_area_wall" format="float" type="dimen">0.04</item>
 
     <integer name="pref_server_send_delay_def">10</integer>
+    <integer name="pref_scan_accuracy_def">5</integer>
 </resources>

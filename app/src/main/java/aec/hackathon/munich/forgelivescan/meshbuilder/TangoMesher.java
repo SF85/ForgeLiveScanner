@@ -28,8 +28,10 @@ import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
 import com.google.atap.tangoservice.experimental.TangoImageBuffer;
 
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -38,6 +40,11 @@ import java.util.List;
 
 import com.projecttango.tangosupport.TangoPointCloudManager;
 import com.projecttango.tangosupport.TangoSupport;
+
+import aec.hackathon.munich.forgelivescan.R;
+
+import static aec.hackathon.munich.forgelivescan.ForgeLiveScanActivity.KEY_PREF_SCAN_ACCURACY;
+import static aec.hackathon.munich.forgelivescan.ForgeLiveScanActivity.contextOfApplication;
 
 /**
  * Uses the Tango Service data to build 3D meshes. Provides higher level functionality built on top
@@ -69,11 +76,15 @@ public class TangoMesher extends Tango.OnTangoUpdateListener
         void onMeshesAvailable(TangoMesh[] meshVector);
     }
 
-    private void setupReconstruction(){
+    private void setupReconstruction(SharedPreferences sharedPref){
+        int accuracy = sharedPref.getInt(KEY_PREF_SCAN_ACCURACY, contextOfApplication.getResources().getInteger(R.integer.pref_scan_accuracy_def));
+        if (accuracy < 3){
+            accuracy = 3;
+        }
         // Configure the 3D reconstruction library to work in "mesh" mode.
         mConfig = new Tango3dReconstructionConfig();
         mConfig.putBoolean("use_parallel_integration", true); // Default: false
-        mConfig.putDouble("resolution", 0.1); // Default: 0.03
+        mConfig.putDouble("resolution", (double) accuracy/100); // Default: 0.03
         mConfig.putBoolean("generate_color", true);  // Default: true
         mConfig.putDouble("min_depth", 0.50); // Default: 0.60
         mConfig.putDouble("max_depth", 5.0); // Default: 3.50
@@ -83,8 +94,8 @@ public class TangoMesher extends Tango.OnTangoUpdateListener
 
     public TangoMesher(OnTangoMeshesAvailableListener callback) {
         mCallback = callback;
-
-        setupReconstruction();
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(contextOfApplication);
+        setupReconstruction(sharedPref);
         mTango3dReconstruction = new Tango3dReconstruction(mConfig);
         mPointCloudBuffer = new TangoPointCloudManager();
 

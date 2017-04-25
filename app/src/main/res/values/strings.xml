@@ -7,8 +7,11 @@
 
     <string name="pref_cat_connection">Server connection</string>
     <string name="pref_server_url">Server URL</string>
-    <string name="pref_server_url_def">http://www.bim.tu-darmstadt.de/home</string>
+    <string name="pref_server_url_def">http://www.bim.tu-darmstadt.de/livescan</string>
     <string name="pref_server_send_delay">Send delay</string>
+    <string name="pref_cat_scan">Scan settings</string>
+    <string name="pref_scan_accuracy">Accuracy [cm]</string>
+    <string name="pref_changes">FOR CHANGES TO TAKE AFFECT RESTART THE APPLICATION</string>
 
 
     <string name="pref_cat_meshview">Mesh View Properties</string>
@@ -18,5 +21,9 @@
     <string name="pref_meshview_topdown">Top Down</string>
     <string name="scan_offline">Offline</string>
     <string name="scan_area">Area [m²]:</string>
+    <string name="scan_ceiling_height">Ceiling height [m]:</string>
+    <string name="scan_floordistance">Device --> floor [m]:</string>
+    <string name="na">"N/A"</string>
+    <string name="response_code">Response code:</string>
 
 </resources>

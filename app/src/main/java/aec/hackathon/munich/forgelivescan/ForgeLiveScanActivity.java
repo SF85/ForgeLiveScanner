@@ -24,7 +24,6 @@ import android.util.TypedValue;
 import android.view.Display;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
@@ -34,6 +33,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.atap.tango.mesh.TangoMesh;
+import com.google.atap.tango.reconstruction.TangoFloorplanLevel;
 import com.google.atap.tango.reconstruction.TangoPolygon;
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.TangoCameraIntrinsics;
@@ -76,16 +76,26 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     private static final String CAMERA_PERMISSION = Manifest.permission.CAMERA;
     private static final int CAMERA_PERMISSION_CODE = 0;
 
+    String JSON_FLOORPLAN_SPACE = "space";
+    String JSON_FLOORPLAN_WALL = "wall";
+    String JSON_FLOORPLAN_FURNITURE = "furniture";
+    String JSON_DEVICE_ID = "device_id";
+    String JSON_DEVICE_TRANSLATION = "device_translation";
+    String JSON_DEVICE_ROTATION = "device_rotation";
+    String JSON_DEVICE_OFFSET = "offset";
+
     public static final String KEY_PREF_SERVER_URL = "pref_server_url";
     public static final String KEY_PREF_SERVER_SEND_DELAY = "pref_server_send_delay";
+    public static final String KEY_PREF_SCAN_ACCURACY = "pref_scan_accuracy";
 
     private volatile List<TangoPolygon> mPolygons = new ArrayList<>();
+    public static Context contextOfApplication;
 
     private TangoFloorplanner mTangoFloorplanner;
     private Tango mTango;
     private TangoConfig mConfig;
-    private boolean mIsConnected = false;
-    private boolean mIsPaused = true;
+    private boolean mTangoServiceIsConnected = false;
+    private boolean mTangoServiceIsPaused = true;
     private int mDelay;
     private int mDelayCount;
 
@@ -114,6 +124,9 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     private ImageButton mRefreshButton;
     private TextView mOfflineTextView;
     private TextView mAreaText;
+    private TextView mHeightText;
+    private TextView mDistanceText;
+    private TextView mResponseCodeTextView;
 
 
     private String mDeviceId;
@@ -172,6 +185,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        contextOfApplication = getApplicationContext();
         //resetPreferences();
         mSharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -234,6 +248,10 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
 
         mOfflineTextView = (TextView) this.findViewById(R.id.scan_offline_textview);
         mAreaText = (TextView) this.findViewById(R.id.scan_area_value_textview);
+        mResponseCodeTextView = (TextView) contentView.findViewById(R.id.response_code_value_textView);
+        mHeightText = (TextView) contentView.findViewById(R.id.scan_height_value_textview);
+        mDistanceText = (TextView) contentView.findViewById(R.id.scan_floordistance_value_textview);
+
 
         TypedValue typedValue = new TypedValue();
         getResources().getValue(R.dimen.min_area_space, typedValue, true);
@@ -315,8 +333,8 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
                 }
                 mRenderer.clearMeshes();
                 mTango.disconnect();
-                mIsConnected = false;
-                mIsPaused = true;
+                mTangoServiceIsConnected = false;
+                mTangoServiceIsPaused = true;
             } catch (TangoErrorException e) {
                 Log.e(TAG, getString(R.string.exception_tango_error), e);
             }
@@ -358,7 +376,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
             case R.id.scan_button:
                 mTangoFloorplanner.startFloorplanning();
                 mTangoMesher.startSceneReconstruction();
-                mIsPaused = !mIsPaused;
+                mTangoServiceIsPaused = !mTangoServiceIsPaused;
                 mStartScanButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_circle_outline_black_24dp_active));
                 mPauseScanButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause_circle_outline_black_24dp));
                 mOfflineTextView.setVisibility(View.GONE);
@@ -366,7 +384,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
             case R.id.pause_button:
                 mTangoFloorplanner.stopFloorplanning();
                 mTangoMesher.stopSceneReconstruction();
-                mIsPaused = !mIsPaused;
+                mTangoServiceIsPaused = !mTangoServiceIsPaused;
                 mStartScanButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_circle_outline_black_24dp));
                 mPauseScanButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause_circle_outline_black_24dp_active));
                 mOfflineTextView.setVisibility(View.VISIBLE);
@@ -399,8 +417,8 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
                         mConfig = setupTangoConfig(mTango);
                         mTango.connect(mConfig);
                         startupTango();
-                        mIsConnected = true;
-                        //mIsPaused = false;
+                        mTangoServiceIsConnected = true;
+                        //mTangoServiceIsPaused = false;
                         setDisplayRotation();
                     } catch (TangoOutOfDateException e) {
                         Log.e(TAG, getString(R.string.exception_out_of_date), e);
@@ -458,8 +476,10 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
         mTangoFloorplanner = new TangoFloorplanner(new TangoFloorplanner
                 .OnFloorplanAvailableListener() {
             @Override
-            public void onFloorplanAvailable(List<TangoPolygon> polygons) {
+            public void onFloorplanAvailable(List<TangoPolygon> polygons,
+                                             List<TangoFloorplanLevel> levels) {
                 calculateAndUpdateArea(polygons);
+                updateFloorAndCeiling(levels);
                 if (mDelayCount == 0) {
                     sendData(toJSON(polygons).toString());
                     mDelayCount = mDelay;
@@ -472,7 +492,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
         mTangoFloorplanner.setDepthCameraCalibration(mTango.getCameraIntrinsics
                 (TangoCameraIntrinsics.TANGO_CAMERA_DEPTH));
 
-        if (!mIsPaused){
+        if (!mTangoServiceIsPaused){
             mTangoMesher.startSceneReconstruction();
             mTangoFloorplanner.startFloorplanning();
         }
@@ -532,7 +552,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
                     synchronized (ForgeLiveScanActivity.this) {
                         // Don't execute any tango API actions if we're not connected to the
                         // service.
-                        if (!mIsConnected) {
+                        if (!mTangoServiceIsConnected) {
                             return;
                         }
                         // Calculate the camera color pose at the camera frame update time in
@@ -607,14 +627,18 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
             if (!tp.isClosed || tp.vertices2d.size() < 4) {
                 continue;
             }
-            
+
             JSONArray poly = new JSONArray();
             int c = 0;
-            for(Iterator it = tp.vertices2d.iterator(); it.hasNext();) {
+            for (Iterator it = tp.vertices2d.iterator(); it.hasNext(); ) {
                 vertex = (float[]) it.next();
                 try {
-                    poly.put(vertex[0] + mOffset[0]);
-                    poly.put(vertex[1] + mOffset[1]);
+                    // offset on translation & rotation (only around z-axis)
+                    float x = (float) (vertex[0] * Math.cos(mOffset[3] * Math.PI / 180) - vertex[1] * Math.sin(mOffset[3] * Math.PI / 180) + mOffset[0]);
+                    float y = (float) (vertex[1] * Math.cos(mOffset[3] * Math.PI / 180) + vertex[0] * Math.sin(mOffset[3] * Math.PI / 180) + mOffset[1]);
+
+                    poly.put(x);
+                    poly.put(y);
                     poly.put(0.1f + mOffset[2]); // tp.level --- API change in Gankino release!
                     c++;
                 } catch (JSONException e) {
@@ -635,13 +659,13 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
 
             out = new JSONObject();
             try {
-                out.put("space", lines[TangoPolygon.TANGO_3DR_LAYER_SPACE]);
-                out.put("wall", lines[TangoPolygon.TANGO_3DR_LAYER_WALLS]);
-                out.put("furniture", lines[TangoPolygon.TANGO_3DR_LAYER_FURNITURE]);
-                out.put("device_id", mDeviceId);
-                out.put("device_translation", new JSONArray(devicePose.getTranslationAsFloats()));
-                out.put("device_rotation", new JSONArray(devicePose.getRotationAsFloats()));
-                out.put("offset", new JSONArray(mOffset));
+                out.put(JSON_FLOORPLAN_SPACE, lines[TangoPolygon.TANGO_3DR_LAYER_SPACE]);
+                out.put(JSON_FLOORPLAN_WALL, lines[TangoPolygon.TANGO_3DR_LAYER_WALLS]);
+                out.put(JSON_FLOORPLAN_FURNITURE, lines[TangoPolygon.TANGO_3DR_LAYER_FURNITURE]);
+                out.put(JSON_DEVICE_ID, mDeviceId);
+                out.put(JSON_DEVICE_TRANSLATION, new JSONArray(devicePose.getTranslationAsFloats()));
+                out.put(JSON_DEVICE_ROTATION, new JSONArray(devicePose.getRotationAsFloats()));
+                out.put(JSON_DEVICE_OFFSET, new JSONArray(mOffset));
 
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -651,7 +675,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     }
 
     private void sendData(String data) {
-        if ( mServerURL.isEmpty() ) {
+        if (mServerURL.isEmpty()) {
             Log.e(TAG, "server url empty");
             return;
         }
@@ -663,7 +687,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type","application/json");
+            conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
 
             OutputStream os = conn.getOutputStream();
@@ -673,10 +697,17 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
             writer.close();
             os.close();
 
-            int responseCode=conn.getResponseCode();
-
+            final int responseCode = conn.getResponseCode();
+            final String responseMessage = "(" + conn.getResponseMessage() + ")";
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mResponseCodeTextView.setText(responseCode + responseMessage);
+                }
+            });
             if (responseCode != 200) {
-                Log.e(TAG, "sent data – response code " + responseCode);
+                Log.e(TAG, "sent data – response code: " + responseCode);
+                Log.e(TAG, "sent data – response message: " + responseMessage);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -713,6 +744,44 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
                 mAreaText.setText(areaText);
             }
         });
+    }
+
+    /**
+     * Given the Floorplan levels, calculate the ceiling height and the current distance from the
+     * device to the floor.
+     */
+    private void updateFloorAndCeiling(List<TangoFloorplanLevel> levels) {
+        if (levels.size() > 0) {
+            // Currently only one level is supported by the floorplanning API.
+            TangoFloorplanLevel level = levels.get(0);
+            float ceilingHeight = level.maxZ - level.minZ;
+            final String ceilingHeightText = String.format("%.2f", ceilingHeight);
+            // Query current device pose and calculate the distance from it to the floor.
+            TangoPoseData devicePose;
+            // Synchronize against disconnecting while using the service.
+            synchronized (this) {
+                // Don't execute any Tango API actions if we're not connected to
+                // the service.
+                if (!mTangoServiceIsConnected) {
+                    return;
+                }
+                devicePose = TangoSupport.getPoseAtTime(0.0,
+                        TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION,
+                        TangoPoseData.COORDINATE_FRAME_DEVICE,
+                        TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL,
+                        TangoSupport.TANGO_SUPPORT_ENGINE_OPENGL,
+                        mDisplayRotation);
+            }
+            float devToFloorDistance = devicePose.getTranslationAsFloats()[1] - level.minZ;
+            final String distanceText = String.format("%.2f", devToFloorDistance);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mHeightText.setText(ceilingHeightText);
+                    mDistanceText.setText(distanceText);
+                }
+            });
+        }
     }
 
     /**

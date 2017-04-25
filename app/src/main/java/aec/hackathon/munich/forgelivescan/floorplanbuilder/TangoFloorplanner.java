@@ -17,6 +17,7 @@ package aec.hackathon.munich.forgelivescan.floorplanbuilder;
 
 import com.google.atap.tango.reconstruction.Tango3dReconstruction;
 import com.google.atap.tango.reconstruction.Tango3dReconstructionConfig;
+import com.google.atap.tango.reconstruction.TangoFloorplanLevel;
 import com.google.atap.tango.reconstruction.TangoPolygon;
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.TangoCameraIntrinsics;
@@ -25,14 +26,21 @@ import com.google.atap.tangoservice.TangoPointCloudData;
 import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
 
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.util.List;
 
 import com.projecttango.tangosupport.TangoPointCloudManager;
 import com.projecttango.tangosupport.TangoSupport;
+
+import aec.hackathon.munich.forgelivescan.R;
+
+import static aec.hackathon.munich.forgelivescan.ForgeLiveScanActivity.KEY_PREF_SCAN_ACCURACY;
+import static aec.hackathon.munich.forgelivescan.ForgeLiveScanActivity.contextOfApplication;
 
 /**
  * Uses the Tango Service data to build a floor plan 2D. Provides higher level functionality
@@ -58,17 +66,25 @@ public class TangoFloorplanner extends Tango.OnTangoUpdateListener {
      * Callback for when meshes are available.
      */
     public interface OnFloorplanAvailableListener {
-        void onFloorplanAvailable(List<TangoPolygon> polygons);
+        void onFloorplanAvailable(List<TangoPolygon> polygons, List<TangoFloorplanLevel> levels);
     }
 
     public TangoFloorplanner(OnFloorplanAvailableListener callback) {
         mCallback = callback;
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(contextOfApplication);
+        int accuracy = sharedPref.getInt(KEY_PREF_SCAN_ACCURACY, contextOfApplication.getResources().getInteger(R.integer.pref_scan_accuracy_def));
+        if (accuracy < 0){
+            accuracy = 0;
+        }
         Tango3dReconstructionConfig config = new Tango3dReconstructionConfig();
         // Configure the 3D reconstruction library to work in "floorplan" mode.
         config.putBoolean("use_floorplan", true);
         config.putBoolean("generate_color", false);
         // Simplify the detected countours by allowing a maximum error of 5cm.
-        config.putDouble("floorplan_max_error", 0.05);
+        config.putDouble("floorplan_max_error", (double) accuracy/100);
+        config.putDouble("min_depth", 0.50); // Default: 0.60
+        config.putDouble("max_depth", 5.0); // Default: 3.50
+        config.putBoolean("use_space_clearing", true);  // Default: false
         mTango3dReconstruction = new Tango3dReconstruction(config);
         mPointCloudBuffer = new TangoPointCloudManager();
 
@@ -84,6 +100,8 @@ public class TangoFloorplanner extends Tango.OnTangoUpdateListener {
             mRunnableCallback = new Runnable() {
                 @Override
                 public void run() {
+                    List<TangoPolygon> polygons;
+                    List<TangoFloorplanLevel> levels;
                     // Synchronize access to mTango3dReconstruction. This runs in TangoFloorplanner
                     // thread.
                     synchronized (TangoFloorplanner.this) {
@@ -112,15 +130,19 @@ public class TangoFloorplanner extends Tango.OnTangoUpdateListener {
                         mTango3dReconstruction.updateFloorplan(cloudData, depthPose);
 
                         // Extract the full set of floorplan polygons.
-                        List<TangoPolygon> polygons = mTango3dReconstruction.extractFloorplan();
+                        polygons = mTango3dReconstruction.extractFloorplan();
 
-                        // Provide the new floorplan polygons to the app via callback.
-                        mCallback.onFloorplanAvailable(polygons);
+                        // Extract the full set of floorplan levels.
+                        levels = mTango3dReconstruction.extractFloorplanLevels();
                     }
+                    // Provide the new floorplan polygons to the app via callback.
+                    mCallback.onFloorplanAvailable(polygons, levels);
                 }
+
             };
         }
     }
+
 
     /**
      * Synchronize access to mTango3dReconstruction. This runs in UI thread.

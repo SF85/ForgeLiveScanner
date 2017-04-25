@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory
+        android:title="@string/pref_changes"
+        android:key="pref_cat_scan"/>
+    <PreferenceCategory
         android:title="@string/pref_cat_connection"
         android:key="pref_cat_connection">
         <EditTextPreference
@@ -17,5 +20,18 @@
             android:maxLength="2"
             />
     </PreferenceCategory>
+    <PreferenceCategory
+        android:title="@string/pref_cat_scan"
+        android:key="pref_cat_scan">
+        <aec.hackathon.munich.forgelivescan.util.IntEditTextPreference
+            android:key="pref_scan_accuracy"
+            android:title="@string/pref_scan_accuracy"
+            android:defaultValue="@integer/pref_scan_accuracy_def"
+            android:inputType="number"
+            android:numeric="integer"
+            android:maxLength="2"
+            />
+    </PreferenceCategory>
+
 
 </PreferenceScreen>
