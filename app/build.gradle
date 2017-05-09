@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    buildToolsVersion "25.0.3"
     defaultConfig {
         applicationId "aec.hackathon.munich.forgelivescan"
         minSdkVersion 19
@@ -10,6 +10,9 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        jackOptions {
+            enabled true
+        }
     }
     buildTypes {
         release {
@@ -17,12 +20,17 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
+    apply from: '../version.gradle'
+    compile "com.google.tango:sdk-base:${release_version}"
+    compile "com.google.tango:support-base:${release_version}"
+    compile "com.google.tango:support-reconstruction:${release_version}"
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile project(':crosswalkwebview')
-    compile files('libs/TangoSDK_Gankino_Java.jar')
-    compile project(':TangoSupport_Gankino_Java')
 }

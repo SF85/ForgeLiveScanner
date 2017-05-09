@@ -1,2 +1,2 @@
-include ':app', ':TangoSupport_Gankino_Java'
+include ':app'
 include ':crosswalkwebview'
