@@ -15,6 +15,7 @@ import android.net.wifi.WifiManager;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
@@ -55,6 +56,7 @@ import org.json.JSONObject;
 import org.xwalk.core.XWalkView;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
@@ -62,14 +64,17 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import aec.hackathon.munich.forgelivescan.floorplanbuilder.TangoFloorplanner;
 import aec.hackathon.munich.forgelivescan.meshbuilder.MeshBuilderRenderer;
 import aec.hackathon.munich.forgelivescan.meshbuilder.TangoMesher;
+import aec.hackathon.munich.forgelivescan.util.AsyncResponse;
 import aec.hackathon.munich.forgelivescan.util.CustomWebView;
+import aec.hackathon.munich.forgelivescan.util.SaveMeshTask;
 
-public class ForgeLiveScanActivity extends Activity implements View.OnClickListener, SharedPreferences.OnSharedPreferenceChangeListener {
+public class ForgeLiveScanActivity extends Activity implements View.OnClickListener, SharedPreferences.OnSharedPreferenceChangeListener, AsyncResponse {
     private static final String TAG = ForgeLiveScanActivity.class.getSimpleName();
     private static final String TANGO_PACKAGE_NAME = "com.google.tango";
     private static final int MIN_TANGO_VERSION = 11925;
@@ -87,6 +92,9 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     public static final String KEY_PREF_SERVER_URL = "pref_server_url";
     public static final String KEY_PREF_SERVER_SEND_DELAY = "pref_server_send_delay";
     public static final String KEY_PREF_SCAN_ACCURACY = "pref_scan_accuracy";
+
+    boolean mSavePly = true;
+    boolean mSaveObj = true;
 
     private volatile List<TangoPolygon> mPolygons = new ArrayList<>();
     public static Context contextOfApplication;
@@ -111,6 +119,8 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
 
     private float mMinAreaSpace = 0;
     private float mMinAreaWall = 0f;
+    private String mSavePath;
+    private String mSaveDir = ForgeLiveScanActivity.class.getSimpleName();
 
     private ImageButton mTransUpButton;
     private ImageButton mTransDownButton;
@@ -127,6 +137,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     private TextView mHeightText;
     private TextView mDistanceText;
     private TextView mResponseCodeTextView;
+    private ImageButton mSaveButton;
 
 
     private String mDeviceId;
@@ -189,6 +200,10 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
         //resetPreferences();
         mSharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
+        mSavePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + mSaveDir + "/";
+        if (new File(mSavePath).mkdir()){
+            Log.d(TAG, "save folder " + mSaveDir +" created");
+        }
 
         mServerURL = mSharedPref.getString(KEY_PREF_SERVER_URL, getResources().getString(R.string.pref_server_url_def));
         mDelay = mSharedPref.getInt(KEY_PREF_SERVER_SEND_DELAY, getResources().getInteger(R.integer.pref_server_send_delay_def));
@@ -245,6 +260,9 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
         mPauseScanButton.setOnClickListener(this);
         mRefreshButton = (ImageButton) this.findViewById(R.id.refresh_button);
         mRefreshButton.setOnClickListener(this);
+        mSaveButton = (ImageButton) contentView.findViewById(R.id.save_button);
+        mSaveButton.setOnClickListener(this);
+
 
         mOfflineTextView = (TextView) this.findViewById(R.id.scan_offline_textview);
         mAreaText = (TextView) this.findViewById(R.id.scan_area_value_textview);
@@ -393,6 +411,20 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
                 //CustomWebView.reload(mWebView);
                 CustomWebView.loadUrl("javascript:window.location.reload( true )", mWebView);
                 Log.d(TAG, "reload url: " + mServerURL);
+                break;
+            case R.id.save_button:
+                if (!mTangoServiceIsPaused){
+                    showsToastOnUiThread("Saving not possible while scan still active!");
+                    break;
+                }
+                mSaveButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_save_black_24dp_active));
+                try {
+                    saveData(mSavePly, mSaveObj);
+                }catch (ExecutionException ex){
+                    ex.printStackTrace();
+                }catch (InterruptedException ex){
+                    ex.printStackTrace();
+                }
                 break;
         }
     }
@@ -714,6 +746,28 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
         }
     }
 
+    private void saveData(boolean ply, boolean obj) throws ExecutionException, InterruptedException {
+        Log.d(TAG, "save data to: " + mSavePath);
+        SaveMeshTask sTask = new SaveMeshTask(mSavePath, this){};
+
+        sTask.mTangoMesh = mTangoMesher.mTango3dReconstruction.extractFullMesh();
+        sTask.execute(ply, obj);
+    }
+
+    /**
+     * AsyncTask Responses
+     * @param result
+     */
+    @Override
+    public void onSaveDataFinished(String result) {
+        if (result.equals("true")){
+            showsToastOnUiThread("Data successfully saved!");
+        } else {
+            showsToastOnUiThread("Saving data failed, see log.");
+        }
+        mSaveButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_save_black_24dp));
+    }
+
     /**
      * Set the display rotation.
      */
@@ -833,6 +887,16 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
                 })
                 .create();
         dialog.show();
+    }
+
+    private void showsToastOnUiThread(final String string) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(ForgeLiveScanActivity.this,
+                        string, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     /**
