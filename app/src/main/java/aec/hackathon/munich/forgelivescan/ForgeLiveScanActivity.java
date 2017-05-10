@@ -120,7 +120,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     private float mMinAreaSpace = 0;
     private float mMinAreaWall = 0f;
     private String mSavePath;
-    private String mSaveDir = ForgeLiveScanActivity.class.getSimpleName();
+    private String mSaveDir = getResources().getString(R.string.app_name);
 
     private ImageButton mTransUpButton;
     private ImageButton mTransDownButton;
