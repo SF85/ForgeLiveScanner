@@ -120,7 +120,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
     private float mMinAreaSpace = 0;
     private float mMinAreaWall = 0f;
     private String mSavePath;
-    private String mSaveDir = getResources().getString(R.string.app_name);
+    private String mSaveDir;
 
     private ImageButton mTransUpButton;
     private ImageButton mTransDownButton;
@@ -295,6 +295,8 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
             }, null);
         }
         connectRenderer();
+
+        mSaveDir = getResources().getString(R.string.app_name);
 
         WifiManager manager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = manager.getConnectionInfo();
