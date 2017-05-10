@@ -200,6 +200,7 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
         //resetPreferences();
         mSharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
+        mSaveDir = getResources().getString(R.string.app_name);
         mSavePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + mSaveDir + "/";
         if (new File(mSavePath).mkdir()){
             Log.d(TAG, "save folder " + mSaveDir +" created");
@@ -295,8 +296,6 @@ public class ForgeLiveScanActivity extends Activity implements View.OnClickListe
             }, null);
         }
         connectRenderer();
-
-        mSaveDir = getResources().getString(R.string.app_name);
 
         WifiManager manager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = manager.getConnectionInfo();
